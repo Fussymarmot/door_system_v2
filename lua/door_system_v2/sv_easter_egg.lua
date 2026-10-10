@@ -1,0 +1,48 @@
+--[[
+    DOOR SYSTEM V2 — пасхалка: дверь на голову
+]]
+
+local lastTrigger = {}
+
+-- Создаёт падающую дверь при активации пасхалки во время взлома.
+net.Receive("DoorSystem_EasterEgg", function(_, ply)
+    if not IsValid(ply) or not ply:Alive() then return end
+
+    local cfg = DoorSystem.Config.EasterEgg
+    if not cfg or not cfg.enabled then return end
+    if not ply.DoorSystem_Active then return end
+
+    local steamid = ply:SteamID64()
+    local now = CurTime()
+    if lastTrigger[steamid] and now - lastTrigger[steamid] < cfg.cooldown then return end
+    lastTrigger[steamid] = now
+
+    local headPos = ply:GetPos() + Vector(0, 0, cfg.spawnHeight)
+
+    local door = ents.Create("prop_physics")
+    if not IsValid(door) then return end
+
+    door:SetModel(cfg.model)
+    door:SetPos(headPos)
+    door:SetAngles(Angle(0, math.random(0, 360), 90))
+    door:Spawn()
+
+    local phys = door:GetPhysicsObject()
+    if IsValid(phys) then
+        phys:Wake()
+        phys:SetMass(400)
+    end
+
+    door.Touch = function(self, ent)
+        if ent == ply and IsValid(ply) and ply:Alive() then
+            ply:TakeDamage(1000, self, self)
+            ply:ChatPrint("Дверь. Ты. Всё.")
+        end
+    end
+
+    timer.Simple(8, function()
+        if IsValid(door) then
+            door:Remove()
+        end
+    end)
+end)
