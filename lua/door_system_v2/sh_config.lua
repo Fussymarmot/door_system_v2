@@ -320,7 +320,7 @@ DoorSystem.Config = {
                 ["tfa_dayr_axe_irontool"] = true,
                 ["tfa_dayr_axe_flint"] = true,
             },
-            hitSound = "door_system_v2/axe_hit.ogg",
+            hitSound = "door_system_v2/axe_hit.mp3",
             hitInterval = 0.8,
         },
         {
@@ -330,7 +330,7 @@ DoorSystem.Config = {
             requiredWeapons = {
                 ["weapon_crowbar"] = true,
             },
-            hitSound = "door_system_v2/crowbar_hit.ogg",
+            hitSound = "door_system_v2/crowbar_loop.mp3",
             hitInterval = 0.5,
         },
         {
@@ -341,7 +341,7 @@ DoorSystem.Config = {
                 ["tfa_dayr_hacksaw_rusted"] = true,
                 ["tfa_dayr_hacksaw"] = true,
             },
-            hitSound = "door_system_v2/hacksaws.ogg",
+            hitSound = "door_system_v2/hacksaw_loop.mp3",
             hitInterval = 0.5,
         },
         {
@@ -366,7 +366,7 @@ DoorSystem.Config = {
             requiredWeapons = {
                 ["dayr_handmade_grenade"] = true,
             },
-            hitSound = "door_system_v2/explosion.ogg",
+            hitSound = "door_system_v2/boom.mp3",
             hitInterval = 0.5,
         },
         {
@@ -376,7 +376,7 @@ DoorSystem.Config = {
             requiredWeapons = {
                 ["weapon_frag"] = true,
             },
-            hitSound = "door_system_v2/explosion.ogg",
+            hitSound = "door_system_v2/boom.mp3",
             hitInterval = 0.5,
         },
         {
@@ -386,7 +386,7 @@ DoorSystem.Config = {
             requiredWeapons = {
                 ["tfa_dayr_dynamite"] = true,
             },
-            hitSound = "door_system_v2/explosion.ogg",
+            hitSound = "door_system_v2/boom.mp3",
             hitInterval = 0.5,
         },
         {
@@ -397,7 +397,7 @@ DoorSystem.Config = {
             requiredWeapons = {
                 ["tfa_dayr_molotov"] = true,
             },
-            hitSound = "door_system_v2/explosion.ogg", -- заглушка
+            hitSound = "door_system_v2/boom.mp3", -- заглушка
             hitInterval = 0.5,
         },
     },

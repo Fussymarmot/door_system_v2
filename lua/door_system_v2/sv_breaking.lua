@@ -61,12 +61,27 @@ end
 
 -- Завершает взлом успешно и применяет результат режима (открыть / выломать).
 local function FinishBreaking(ply, door, mode)
+    -- Останавливаем звуки инструмента/эффекта до показа картинки открытой двери.
+    -- Иначе длинные звуки продолжают играть уже после завершения мини-игры.
+    if IsValid(door) and IsValid(ply) then
+        local activeTool = ply.DoorSystem_Tool
+        local activeKind = ply.DoorSystem_Kind
+        if activeTool and activeTool.hitSound then
+            door:StopSound(activeTool.hitSound)
+        end
+        local effects = DoorSystem.Config.Effects or {}
+        local effect = activeKind and effects[activeKind]
+        if effect and effect.sound then
+            door:StopSound(effect.sound)
+        end
+        local debrisCfg = DoorSystem.GetKindParams and activeTool and DoorSystem.GetKindParams(activeTool.id, door)
+        if debrisCfg and debrisCfg.endSound then
+            door:StopSound(debrisCfg.endSound)
+        end
+    end
+
     StopTimerAndRelease(TimerName(ply), door)
     ClearPlayerState(ply)
-
-    net.Start("DoorSystem_Stop")
-        net.WriteBool(true)
-    net.Send(ply)
 
     local modeCfg = DoorSystem.Config.Modes and DoorSystem.Config.Modes[mode]
     local result = modeCfg and modeCfg.result or "break"
@@ -84,6 +99,12 @@ local function FinishBreaking(ply, door, mode)
     else
         DoorSystem.BreakDoor(door)
     end
+
+    -- Сообщаем клиенту об успехе последним: открывающий/ломающий звук не
+    -- должен начинаться уже после переключения панели на открытую дверь.
+    net.Start("DoorSystem_Stop")
+        net.WriteBool(true)
+    net.Send(ply)
 end
 
 -- Запускает взлом выбранным инструментом в выбранном режиме.
@@ -205,8 +226,6 @@ function DoorSystem.OpenDoor(door)
     door.DoorSystem_Locked = false -- снимает блокировку из sv_lock.lua
     door.DoorSystem_ClosedAngle = nil
     door.DoorSystem_ClosedPos = nil
-
-    door:EmitSound("doors/door_latch3.wav", 75, 100)
 
     -- Сначала разблокируем, затем открываем (порядок важен для prop_door_rotating).
     door:Fire("Unlock", "", 0)
