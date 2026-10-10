@@ -68,6 +68,9 @@ if SERVER then
     resource.AddSingleFile("materials/door_system_v2/handmade_grenade.png")
     resource.AddSingleFile("materials/door_system_v2/shovel.png")
     resource.AddSingleFile("materials/door_system_v2/molotov.png")
+    resource.AddSingleFile("materials/door_system_v2/mode_bg.png")
+    resource.AddSingleFile("materials/door_system_v2/mode_timer.png")
+    resource.AddSingleFile("materials/door_system_v2/mode_hands.png")
 
     resource.AddSingleFile("materials/door_system_v2/minigame/frame.png")
     resource.AddSingleFile("materials/door_system_v2/minigame/locked_door.jpg")

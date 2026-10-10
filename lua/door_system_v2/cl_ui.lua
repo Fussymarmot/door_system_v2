@@ -2,9 +2,9 @@
     DOOR SYSTEM V2 — меню взлома
 
     По центру экрана: картинка двери с тремя инструментами.
-    Справа — две квадратные кнопки способа взлома:
-      1) «Ломать по таймеру»;
-      2) «Ломать руками» (кликать по крестикам в мини-игре).
+    Справа — две большие квадратные кнопки способа взлома (только иконки):
+      песочные часы — ломать по таймеру;
+      молоток и ключ — ломать руками (кликать по крестикам в мини-игре).
     Порядок: сначала выбираешь способ справа, затем кликаешь по
     инструменту на двери — взлом стартует.
 ]]
@@ -67,7 +67,7 @@ function PANEL:OnRemove()
     hook.Remove("CreateMove", "DoorSystem_FreezeMenu")
 end
 
--- Рисует картинку двери, рамку и подсказки (боковая колонка прозрачная).
+-- Рисует картинку двери и рамку (боковая колонка прозрачная).
 function PANEL:Paint(w, h)
     surface.SetDrawColor(255, 255, 255, 255)
     surface.SetMaterial(self.bgMaterial)
@@ -83,13 +83,6 @@ function PANEL:Paint(w, h)
         surface.SetMaterial(self.frameMat)
         surface.DrawTexturedRect(0, 0, self.doorW, self.doorH)
     end
-
-    -- Подсказка над кнопками справа.
-    local sideX = self.doorW + self.sideGap + self.sideW / 2
-    draw.SimpleText("1. Выбери способ", "DermaDefaultBold", sideX, 14,
-        self.mode and Color(150, 150, 150) or color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-    draw.SimpleText("2. Выбери инструмент на двери", "DermaDefault", sideX, h - 14,
-        self.mode and color_white or Color(150, 150, 150), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- Привязывает меню к конкретной двери.
@@ -208,7 +201,8 @@ function PANEL:BuildToolButtons()
     end
 end
 
--- Две обычные квадратные кнопки способа справа от двери (без иконок).
+-- Две большие квадратные кнопки способа справа от двери: только иконка на
+-- общем фоне, без текста.
 function PANEL:BuildModeButtons()
     if self.modeButtons then
         for _, b in ipairs(self.modeButtons) do
@@ -218,14 +212,16 @@ function PANEL:BuildModeButtons()
 
     self.modeButtons = {}
 
-    local side = math.min(self.sideW, 150)
-    local gap = 20
+    local gap = 15
+    local side = math.min(self.sideW, math.floor((self.doorH - gap) / 2))
     local startY = (self.doorH - (side * 2 + gap)) / 2
     local x = self.doorW + self.sideGap + (self.sideW - side) / 2
 
+    local matBg = Material("door_system_v2/mode_bg.png", "noclamp smooth")
+
     local modes = {
-        { id = "timer", title = "Ломать", sub = "по таймеру" },
-        { id = "hands", title = "Ломать", sub = "руками" },
+        { id = "timer", icon = Material("door_system_v2/mode_timer.png", "noclamp smooth") },
+        { id = "hands", icon = Material("door_system_v2/mode_hands.png", "noclamp smooth") },
     }
 
     for i, m in ipairs(modes) do
@@ -238,16 +234,25 @@ function PANEL:BuildModeButtons()
             local selected = self.mode == m.id
             local hover = s:IsHovered()
 
-            local bg = selected and Color(120, 95, 35, 240)
-                or (hover and Color(70, 62, 50, 240) or Color(40, 36, 30, 230))
-            draw.RoundedBox(4, 0, 0, w, h, bg)
+            surface.SetDrawColor(255, 255, 255, 255)
+            surface.SetMaterial(matBg)
+            surface.DrawTexturedRect(0, 0, w, h)
 
-            surface.SetDrawColor(selected and Color(255, 210, 90) or Color(110, 95, 65))
-            surface.DrawOutlinedRect(0, 0, w, h, selected and 3 or 2)
+            -- Иконка крупная: ~70% кнопки; выбранная — ярче, остальные приглушены.
+            local iconSize = w * 0.7
+            local c = selected and 255 or (hover and 230 or 170)
+            if selected then
+                surface.SetDrawColor(255, 225, 130, 255)
+            else
+                surface.SetDrawColor(c, c, c, 255)
+            end
+            surface.SetMaterial(m.icon)
+            surface.DrawTexturedRect(w / 2 - iconSize / 2, h / 2 - iconSize / 2, iconSize, iconSize)
 
-            local col = selected and color_white or Color(220, 210, 190)
-            draw.SimpleText(m.title, "DermaLarge", w / 2, h * 0.38, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-            draw.SimpleText(m.sub, "DermaDefaultBold", w / 2, h * 0.62, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            if selected then
+                surface.SetDrawColor(255, 210, 90, 255)
+                surface.DrawOutlinedRect(6, 6, w - 12, h - 12, 3)
+            end
         end
 
         btn.DoClick = function()
