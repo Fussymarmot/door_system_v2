@@ -1,0 +1,39 @@
+# Собранные аддоны (результат publish.py / gmad)
+*.gma
+
+# Исходники графики, не нужные в игре
+*.psd
+*.xcf
+*.kra
+*.blend
+*.blend1
+
+# Python (publish.py)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Редакторы и IDE
+.vscode/
+.idea/
+*.vcxproj
+*.vcxproj.user
+*.sublime-workspace
+*.swp
+*~
+
+# Мусор ОС
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.bak
+
+# Локальные архивы и распакованные ассеты
+*.zip
+*.rar
+*.7z
