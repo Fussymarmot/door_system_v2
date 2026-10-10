@@ -158,9 +158,8 @@ function PANEL:BuildToolButtons()
             local rowY = h * 0.74
 
             if self.mode == "hands" then
-                -- Время тут не важно: сколько нужно попаданий.
-                local hits = DoorSystem.Config.HandsMode and DoorSystem.Config.HandsMode.hitsRequired or 8
-                draw.SimpleText(hits .. " ударов", "DermaDefaultBold", w / 2, rowY + 8,
+                -- Время тут не важно: подпись зависит от мини-игры инструмента.
+                draw.SimpleText(DoorSystem.GetHandsLabel(toolCfg.id, self.door), "DermaDefaultBold", w / 2, rowY + 8,
                     textCol, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             else
                 local tIconSize = 16

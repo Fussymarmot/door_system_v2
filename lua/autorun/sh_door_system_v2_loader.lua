@@ -47,6 +47,7 @@ if SERVER then
     util.AddNetworkString("DoorSystem_Broken")
     util.AddNetworkString("DoorSystem_EasterEgg")
     util.AddNetworkString("DoorSystem_MinigameHit")
+    util.AddNetworkString("DoorSystem_MinigameProgress")
     util.AddNetworkString("DoorSystem_StartResult")
     util.AddNetworkString("DoorSystem_UpdateSkinSettings")
 
@@ -88,6 +89,21 @@ if SERVER then
     resource.AddSingleFile("materials/door_system_v2/minigame/steel_door2.jpg")
     resource.AddSingleFile("materials/door_system_v2/minigame/steel_door2_open.jpg")
 
+    resource.AddSingleFile("materials/door_system_v2/minigame/separator.png")
+    resource.AddSingleFile("materials/door_system_v2/minigame/molotov_fire.png")
+    resource.AddSingleFile("materials/door_system_v2/minigame/button_circle.png")
+    resource.AddSingleFile("materials/door_system_v2/minigame/debris/brick.png")
+    resource.AddSingleFile("materials/door_system_v2/minigame/debris/plank.png")
+    resource.AddSingleFile("materials/door_system_v2/minigame/debris/stone.png")
+    for i = 1, 15 do
+        resource.AddSingleFile(string.format("materials/door_system_v2/minigame/boom/frame_%03d.jpg", i))
+    end
+
+    resource.AddSingleFile("sound/door_system_v2/oblomok_take.mp3")
+    resource.AddSingleFile("sound/door_system_v2/oblomok_drop.ogg")
+    resource.AddSingleFile("sound/door_system_v2/zaval_end.ogg")
+    resource.AddSingleFile("sound/door_system_v2/boom.mp3")
+    resource.AddSingleFile("sound/door_system_v2/molotov_fire.ogg")
     resource.AddSingleFile("sound/door_system_v2/axe_hit.ogg")
     resource.AddSingleFile("sound/door_system_v2/crowbar_hit.ogg")
     resource.AddSingleFile("sound/door_system_v2/fist_hit.mp3")

@@ -103,3 +103,62 @@ function DoorSystem.GetToolTime(tool, door)
 
     return 60
 end
+
+
+-- Возвращает тип мини-игры для инструмента (clicker, crosses, bar, saw, boom, molotov).
+function DoorSystem.GetMinigameKind(toolId)
+    return DoorSystem.Config.MinigameKinds[toolId] or "crosses"
+end
+
+-- Уровень сложности двери (1..5): по скину, иначе по типу двери.
+function DoorSystem.GetDoorDifficulty(door)
+    local cfg = DoorSystem.Config
+    local skin = IsValid(door) and (door:GetSkin() or 0) or 0
+
+    local level = cfg.DifficultyBySkin and cfg.DifficultyBySkin[skin]
+        or (cfg.DefaultDifficulty and cfg.DefaultDifficulty[DoorSystem.GetDoorType(door)])
+        or 1
+
+    return math.Clamp(level, 1, 5)
+end
+
+-- Параметры мини-игры инструмента с учётом сложности двери.
+-- Массивы из Config.Difficulty разворачиваются в значение нужного уровня.
+function DoorSystem.GetKindParams(toolId, door)
+    local cfg = DoorSystem.Config
+    local kind = DoorSystem.GetMinigameKind(toolId)
+    local level = DoorSystem.GetDoorDifficulty(door)
+
+    local params = { kind = kind, level = level }
+
+    for key, value in pairs(cfg.Difficulty[kind] or {}) do
+        if istable(value) then
+            params[key] = value[math.min(level, #value)]
+        else
+            params[key] = value
+        end
+    end
+
+    params.hitsRequired = params.hitsRequired or (cfg.HandsMode and cfg.HandsMode.hitsRequired) or 8
+    params.minHitInterval = params.minHitInterval or (cfg.HandsMode and cfg.HandsMode.minHitInterval) or 0.2
+
+    return params
+end
+
+-- Настройки попаданий (hitsRequired / minHitInterval) для инструмента на этой двери.
+function DoorSystem.GetHandsCfg(toolId, door)
+    return DoorSystem.GetKindParams(toolId, door)
+end
+
+-- Подпись под инструментом в меню в режиме «руками».
+function DoorSystem.GetHandsLabel(toolId, door)
+    local kind = DoorSystem.GetMinigameKind(toolId)
+
+    if kind == "bar" then return "шкала" end
+    if kind == "boom" or kind == "molotov" then return "взрыв" end
+    if kind == "saw" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " движений" end
+    if kind == "debris" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " обломков" end
+    if kind == "clicker" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " кликов" end
+
+    return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " ударов"
+end

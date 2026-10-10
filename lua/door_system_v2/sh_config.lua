@@ -73,11 +73,110 @@ DoorSystem.Config = {
         hands = { result = "open" },
     },
 
-    -- Параметры режима «ломать руками» (пока одинаковые для всех дверей).
+    -- Параметры режима «ломать руками» (по умолчанию — для крестиков).
     HandsMode = {
         hitsRequired = 8,      -- сколько попаданий нужно, чтобы сломать дверь
         minHitInterval = 0.2,  -- антиспам: минимальный интервал между попаданиями
         timeout = 120,         -- абсолютный потолок мини-игры, сек
+    },
+
+    -- Какая мини-игра у какого инструмента (в режиме «руками»):
+    --   clicker — кликать по двери;
+    --   crosses — кликать по появляющимся крестикам;
+    --   debris  — лопата: схватить обломок (камень/кирпич/доску) и выбросить в бок;
+    --   bar     — удерживать separator на участке шкалы (пробел — вправо, отпустил — влево);
+    --   saw     — зажать ползунок и водить вправо-влево;
+    --   boom    — звук взрыва + анимация кадров;
+    --   molotov — звук + анимация огня.
+    MinigameKinds = {
+        fist = "clicker",
+        axe = "crosses",
+        shovel = "debris",
+        crowbar = "bar",
+        hacksaw = "saw",
+        grenade = "boom",
+        handmade_grenade = "boom",
+        dynamite = "boom",
+        molotov = "molotov",
+    },
+
+    -- Сложность мини-игр зависит от двери. Уровень двери (1..5) берётся из
+    -- DifficultyBySkin, а для обычных дверей — из DefaultDifficulty по типу.
+    DifficultyBySkin = {
+        [14] = 2, -- Заколоченная
+        [15] = 3, -- Железная квартирная
+        [16] = 1, -- Деревянная
+        [17] = 5, -- Бронированная
+        [18] = 3, -- Завал
+        [19] = 4, -- Решётка
+        [20] = 4, -- Заражённая
+    },
+    DefaultDifficulty = { wood = 1, iron = 3 },
+
+    -- Параметры мини-игр по уровням. Массив из 5 чисел = значения для уровней
+    -- 1..5, одиночное значение одинаково для всех уровней.
+    -- (boom и molotov — просто эффекты, сложности у них нет.)
+    Difficulty = {
+        -- Кулаки: кликать по двери.
+        clicker = {
+            hitsRequired = { 15, 20, 28, 36, 45 },
+            minHitInterval = 0.08,
+        },
+
+        -- Топор: крестики.
+        crosses = {
+            hitsRequired = { 6, 8, 10, 12, 14 },
+            minHitInterval = 0.2,
+            crossLifetime = { 1.8, 1.4, 1.1, 0.9, 0.75 },
+            crossSpawnEvery = { 1.1, 0.9, 0.75, 0.65, 0.55 },
+            crossSize = { 38, 32, 28, 26, 24 },
+        },
+
+        -- Лом: separator едет вправо, пока зажат пробел, и влево, когда отпущен.
+        bar = {
+            fillTime = { 10, 8, 7, 6, 5 },        -- секунд удержания до полной шкалы
+            drainMul = { 0.5, 0.7, 0.9, 1.1, 1.3 }, -- скорость убывания мимо участка
+            zoneWidth = { 0.28, 0.22, 0.18, 0.14, 0.11 },
+            zoneSpeed = { 0.25, 0.35, 0.45, 0.6, 0.75 },
+            retargetMin = { 1.2, 1.0, 0.8, 0.6, 0.5 },
+            retargetMax = { 2.2, 1.8, 1.5, 1.2, 1.0 },
+            sepSpeed = 1.1,   -- скорость separator, долей шкалы в секунду
+            sepAccel = 6,     -- «разгон» (меньше — separator инертнее)
+        },
+
+        -- Ножовка: ползунок нужно зажать и водить от края до края.
+        saw = {
+            hitsRequired = { 8, 12, 16, 20, 26 }, -- проходов
+            minHitInterval = 0.15,
+            edgeZone = { 0.14, 0.11, 0.09, 0.07, 0.06 }, -- насколько близко к краю засчитывается проход
+        },
+
+        -- Лопата: схватить обломок и выбросить за пределы двери в бок.
+        debris = {
+            hitsRequired = { 4, 6, 8, 10, 12 },
+            minHitInterval = 0.15,
+            maxItems = { 2, 3, 3, 4, 5 },          -- сколько обломков одновременно
+            spawnEvery = { 1.4, 1.1, 0.9, 0.75, 0.6 },
+            lifetime = { 7, 5.5, 4.5, 3.5, 2.8 },  -- через сколько обломок пропадёт сам
+            itemSize = 84,
+            takeSound = "door_system_v2/oblomok_take.mp3",
+            endSound = "door_system_v2/zaval_end.ogg",
+        },
+    },
+
+    -- Игры-эффекты (взрыв, молотов): дверь открывается по окончании анимации.
+    Effects = {
+        boom = {
+            duration = 1.3,
+            frames = 15,
+            framePath = "door_system_v2/minigame/boom/frame_%03d.jpg",
+            sound = "door_system_v2/boom.mp3",
+        },
+        molotov = {
+            duration = 1.6,
+            image = "door_system_v2/minigame/molotov_fire.png",
+            sound = "door_system_v2/molotov_fire.ogg",
+        },
     },
 
     -- Классы сущностей, которые считаются дверями.
@@ -190,8 +289,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/axe_hit.ogg",
             hitInterval = 0.8,
-            weaponSwingAnim = true,
-            swingDuration = 0.38,
         },
         {
             id = "crowbar",
@@ -202,8 +299,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/crowbar_hit.ogg",
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
         {
             id = "hacksaw",
@@ -215,8 +310,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/hacksaws.ogg",
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
         {
             id = "shovel",
@@ -224,14 +317,13 @@ DoorSystem.Config = {
             icon = "door_system_v2/shovel.png",
             -- TODO: проверь классы лопаты из Day R, здесь стоят предположения.
             requiredWeapons = {
-                ["tfa_dayr_shovel"] = true,
-                ["tfa_dayr_shovel_rusted"] = true,
-                ["tfa_dayr_shovel_handmade"] = true,
+                ["tfa_dayr_showel_rusted"] = true,
+                ["tfa_dayr_showel_iron"] = true,
+                ["tfa_dayr_showel_handmade"] = true,
+                ["tfa_dayr_showel_steel"] = true,
             },
-            hitSound = "door_system_v2/axe_hit.ogg", -- заглушка
+            hitSound = "door_system_v2/oblomok_drop.ogg",
             hitInterval = 0.8,
-            weaponSwingAnim = true,
-            swingDuration = 0.38,
         },
         {
             id = "handmade_grenade",
@@ -242,8 +334,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/explosion.ogg",
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
         {
             id = "grenade",
@@ -254,8 +344,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/explosion.ogg",
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
         {
             id = "dynamite",
@@ -266,8 +354,6 @@ DoorSystem.Config = {
             },
             hitSound = "door_system_v2/explosion.ogg",
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
         {
             id = "molotov",
@@ -276,12 +362,9 @@ DoorSystem.Config = {
             -- TODO: проверь класс молотова из Day R, здесь предположение.
             requiredWeapons = {
                 ["tfa_dayr_molotov"] = true,
-                ["dayr_molotov"] = true,
             },
             hitSound = "door_system_v2/explosion.ogg", -- заглушка
             hitInterval = 0.5,
-            weaponSwingAnim = true,
-            swingDuration = 0.24,
         },
     },
 

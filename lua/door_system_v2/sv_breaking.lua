@@ -32,6 +32,8 @@ local function ClearPlayerState(ply)
     ply.DoorSystem_Tool = nil
     ply.DoorSystem_Mode = nil
     ply.DoorSystem_Hits = 0
+    ply.DoorSystem_Kind = nil
+    ply.DoorSystem_BarProgress = nil
 end
 
 -- Отправляет клиенту текущий прогресс.
@@ -93,11 +95,27 @@ function DoorSystem.StartBreaking(ply, door, tool, mode)
     ply.DoorSystem_Mode = mode
     ply.DoorSystem_Hits = 0
     ply.DoorSystem_LastHit = 0
+    ply.DoorSystem_BarProgress = 0
+    ply.DoorSystem_BarLast = CurTime()
+    ply.DoorSystem_BarSound = 0
+
+    local kind = DoorSystem.GetMinigameKind(tool.id)
+    ply.DoorSystem_Kind = (mode == "hands") and kind or nil
+
+    -- Игры-эффекты (взрыв, молотов): без участия игрока, дверь открывается
+    -- по окончании анимации, звук играет сервер.
+    local effect = (mode == "hands") and DoorSystem.Config.Effects and DoorSystem.Config.Effects[kind] or nil
 
     local startTime = CurTime()
     local duration = math.max(DoorSystem.GetToolTime(tool, door) or 0, 1) -- защита от 0/nil
+    if effect then
+        duration = math.max(effect.duration or 1.3, 0.5)
+        if effect.sound then
+            door:EmitSound(effect.sound, 85, 100)
+        end
+    end
     local handsCfg = DoorSystem.Config.HandsMode or {}
-    local hardTimeout = (mode == "hands") and (handsCfg.timeout or 120) or (duration + 20)
+    local hardTimeout = effect and (duration + 20) or ((mode == "hands") and (handsCfg.timeout or 120) or (duration + 20))
     local lastHitTime = 0
 
     -- Клиент узнаёт о старте и режиме сразу.
@@ -135,15 +153,16 @@ function DoorSystem.StartBreaking(ply, door, tool, mode)
             return
         end
 
-        -- В режиме «руками» прогресс двигают только попадания (см. ниже).
-        if mode ~= "timer" then return end
+        -- В режиме «руками» прогресс двигают только попадания (см. ниже);
+        -- исключение — игры-эффекты, у них прогресс идёт по времени анимации.
+        if mode ~= "timer" and not effect then return end
 
         local elapsed = CurTime() - startTime
         local progress = math.Clamp(elapsed / duration, 0, 1)
 
         SendProgress(ply, progress, tool, mode)
 
-        if tool.hitInterval and (elapsed - lastHitTime) >= tool.hitInterval then
+        if not effect and tool.hitInterval and (elapsed - lastHitTime) >= tool.hitInterval then
             lastHitTime = elapsed
             if tool.hitSound then
                 door:EmitSound(tool.hitSound, 75, math.random(95, 105))
@@ -281,22 +300,26 @@ hook.Add("PlayerDisconnected", "DoorSystem_CleanupOnDisconnect", function(ply)
     StopTimerAndRelease(tname, door)
 end)
 
--- Попадание по крестику в мини-игре («руками»): двигает прогресс.
+-- Попадание в мини-игре («руками»): клик/крестик/проход ползунка двигает прогресс.
 net.Receive("DoorSystem_MinigameHit", function(_, ply)
     if not IsValid(ply) or not ply.DoorSystem_Active then return end
     if ply.DoorSystem_Mode ~= "hands" then return end
 
+    -- Только игры, где прогресс считается по попаданиям.
+    local kind = ply.DoorSystem_Kind
+    if kind ~= "clicker" and kind ~= "crosses" and kind ~= "saw" and kind ~= "debris" then return end
+
     local door, tool = ply.DoorSystem_Door, ply.DoorSystem_Tool
     if not IsValid(door) or not tool then return end
 
-    local cfg = DoorSystem.Config.HandsMode or {}
+    local cfg = DoorSystem.GetKindParams(tool.id, door)
 
     -- Антиспам: клиенту доверять нельзя.
-    if CurTime() - (ply.DoorSystem_LastHit or 0) < (cfg.minHitInterval or 0.2) then return end
+    if CurTime() - (ply.DoorSystem_LastHit or 0) < cfg.minHitInterval then return end
     ply.DoorSystem_LastHit = CurTime()
 
     ply.DoorSystem_Hits = (ply.DoorSystem_Hits or 0) + 1
-    local progress = math.Clamp(ply.DoorSystem_Hits / math.max(cfg.hitsRequired or 8, 1), 0, 1)
+    local progress = math.Clamp(ply.DoorSystem_Hits / math.max(cfg.hitsRequired, 1), 0, 1)
 
     if tool.hitSound then
         door:EmitSound(tool.hitSound, 75, math.random(95, 105))
@@ -310,6 +333,50 @@ net.Receive("DoorSystem_MinigameHit", function(_, ply)
     SendProgress(ply, progress, tool, "hands")
 
     if progress >= 1 then
+        if kind == "debris" and cfg.endSound then
+            door:EmitSound(cfg.endSound, 80, 100)
+        end
+
+        FinishBreaking(ply, door, "hands")
+    end
+end)
+
+-- Прогресс мини-игры «шкала» (лом): клиент присылает текущее значение,
+-- сервер не даёт ему расти быстрее допустимого.
+net.Receive("DoorSystem_MinigameProgress", function(_, ply)
+    if not IsValid(ply) or not ply.DoorSystem_Active then return end
+    if ply.DoorSystem_Mode ~= "hands" or ply.DoorSystem_Kind ~= "bar" then return end
+
+    local door, tool = ply.DoorSystem_Door, ply.DoorSystem_Tool
+    if not IsValid(door) or not tool then return end
+
+    local cfg = DoorSystem.GetKindParams(tool.id, door)
+    local claimed = math.Clamp(net.ReadFloat(), 0, 1)
+
+    local now = CurTime()
+    local dt = math.Clamp(now - (ply.DoorSystem_BarLast or now), 0, 0.5)
+    ply.DoorSystem_BarLast = now
+
+    local old = ply.DoorSystem_BarProgress or 0
+    local maxUp = old + dt / math.max((cfg.fillTime or 7) * 0.6, 1)
+    local new = math.min(claimed, maxUp)
+
+    ply.DoorSystem_BarProgress = new
+
+    -- Звук работы ломом, пока шкала растёт.
+    if new > old and tool.hitSound and now - (ply.DoorSystem_BarSound or 0) >= (tool.hitInterval or 0.5) then
+        ply.DoorSystem_BarSound = now
+        door:EmitSound(tool.hitSound, 75, math.random(95, 105))
+
+        net.Start("DoorSystem_Hit")
+            net.WriteEntity(ply)
+            net.WriteString(tool.id)
+        net.Broadcast()
+    end
+
+    SendProgress(ply, new, tool, "hands")
+
+    if new >= 1 then
         FinishBreaking(ply, door, "hands")
     end
 end)

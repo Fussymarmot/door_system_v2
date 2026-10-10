@@ -8,9 +8,6 @@ DoorSystem.BreakToolId = nil
 DoorSystem.BreakMode = nil
 DoorSystem.LastHitTime = 0
 
-DoorSystem.SwingUntil = 0
-DoorSystem.SwingDuration = 0
-
 -- Консольная команда, которую игрок назначает себе в bind.
 concommand.Add(DoorSystem.Config.Bind, function()
     local ply = LocalPlayer()
@@ -54,6 +51,7 @@ function DoorSystem.RequestBreak(door, toolId, mode)
     if not IsValid(door) then return end
     DoorSystem.EasterEggReady = true
     DoorSystem.PendingDoor = door
+    DoorSystem.PendingTool = toolId
 
     net.Start("DoorSystem_Start")
         net.WriteEntity(door)
@@ -81,23 +79,13 @@ end)
 
 net.Receive("DoorSystem_Hit", function()
     local attacker = net.ReadEntity()
-    local toolId = net.ReadString()
-    local tool = DoorSystem.GetTool(toolId)
+    net.ReadString() -- id инструмента (клиенту не нужен)
 
     if not IsValid(attacker) then return end
 
     if attacker == LocalPlayer() then
         DoorSystem.LastHitTime = CurTime()
         LocalPlayer():ViewPunch(Angle(math.Rand(-1.4, 1.4), math.Rand(-1.6, 1.6), 0))
-
-        if tool and tool.weaponSwingAnim then
-            DoorSystem.SwingDuration = tool.swingDuration or 0.25
-            DoorSystem.SwingUntil = CurTime() + DoorSystem.SwingDuration
-        end
-    end
-
-    if tool and tool.weaponSwingAnim then
-        attacker:DoAttackEvent()
     end
 end)
 
@@ -106,6 +94,7 @@ net.Receive("DoorSystem_StartResult", function()
 
     if not success then
         DoorSystem.PendingDoor = nil
+        DoorSystem.PendingTool = nil
         chat.AddText(Color(220, 90, 90), "[Door System] ", color_white, "Не удалось начать взлом.")
         return
     end
@@ -117,10 +106,12 @@ net.Receive("DoorSystem_StartResult", function()
         local mg = vgui.Create("DoorSystemMinigame")
         if IsValid(mg) then
             mg:SetDoor(DoorSystem.PendingDoor)
+            mg:SetTool(DoorSystem.PendingTool)
         end
     end
 
     DoorSystem.PendingDoor = nil
+    DoorSystem.PendingTool = nil
 end)
 
 -- Отменяет взлом, если игрок начал двигаться или прыгать.
@@ -130,9 +121,13 @@ hook.Add("Think", "DoorSystem_CancelOnMove", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
 
+    -- В игре с ломом пробел — это управление, а не прыжок.
+    local mg = DoorSystem.ActiveMinigame
+    local spaceIsControl = IsValid(mg) and mg.kind == "bar"
+
     if ply:KeyDown(IN_FORWARD) or ply:KeyDown(IN_BACK)
         or ply:KeyDown(IN_MOVELEFT) or ply:KeyDown(IN_MOVERIGHT)
-        or ply:KeyDown(IN_JUMP) then
+        or (not spaceIsControl and ply:KeyDown(IN_JUMP)) then
         net.Start("DoorSystem_Cancel")
         net.SendToServer()
     end
@@ -174,52 +169,6 @@ hook.Add("HUDPaint", "DoorSystem_ProgressBar", function()
         TEXT_ALIGN_CENTER,
         TEXT_ALIGN_CENTER
     )
-end)
-
--- Переопределяет позицию viewmodel для более точного ощущения удара.
-local SWING_KEYFRAMES = {
-    { t = 0.00, ang = Angle(0, 0, 0), fwd = 0, right = 0, up = 0 },
-    { t = 0.35, ang = Angle(16, -12, 10), fwd = -4, right = -2, up = -2 },
-    { t = 0.55, ang = Angle(-34, 6, -12), fwd = 10, right = 3, up = -6 },
-    { t = 1.00, ang = Angle(0, 0, 0), fwd = 0, right = 0, up = 0 },
-}
-
-local function EaseInOutQuad(t)
-    if t < 0.5 then return 2 * t * t end
-    return 1 - ((-2 * t + 2) ^ 2) / 2
-end
-
-local function GetSwingPose(t)
-    for i = 1, #SWING_KEYFRAMES - 1 do
-        local a, b = SWING_KEYFRAMES[i], SWING_KEYFRAMES[i + 1]
-        if t >= a.t and t <= b.t then
-            local span = b.t - a.t
-            local localT = span > 0 and ((t - a.t) / span) or 0
-            localT = EaseInOutQuad(localT)
-
-            return
-                LerpAngle(localT, a.ang, b.ang),
-                Lerp(localT, a.fwd, b.fwd),
-                Lerp(localT, a.right, b.right),
-                Lerp(localT, a.up, b.up)
-        end
-    end
-
-    return Angle(0, 0, 0), 0, 0, 0
-end
-
-hook.Add("CalcViewModelView", "DoorSystem_ManualSwing", function(wep, vm, oldPos, oldAng, pos, ang)
-    if CurTime() > DoorSystem.SwingUntil then return end
-
-    local remaining = DoorSystem.SwingUntil - CurTime()
-    local t = 1 - (remaining / DoorSystem.SwingDuration)
-
-    local addAng, fwd, right, up = GetSwingPose(t)
-
-    local newAng = ang + addAng
-    local newPos = pos + ang:Forward() * fwd + ang:Right() * right + ang:Up() * up
-
-    return newPos, newAng
 end)
 
 -- Проверяет пасхалку: триггер по нажатию колёсика мыши.
