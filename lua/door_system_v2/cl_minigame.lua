@@ -7,7 +7,7 @@
       bar     — лом: удерживать separator на движущемся участке шкалы
                 (зажат пробел — едет вправо, отпущен — влево);
       saw     — ножовка: зажать ползунок и водить его вправо-влево;
-      debris  — лопата: схватить обломок и выбросить его в сторону;
+      debris  — завал (любой инструмент): схватить камень/доску и выбросить в сторону;
       boom    — любая граната: звук взрыва + анимация из кадров;
       molotov — молотов: звук + анимация огня.
 ]]
@@ -21,7 +21,8 @@ local DEBRIS_MATS = {
     plank = "door_system_v2/minigame/debris/plank.png",
     stone = "door_system_v2/minigame/debris/stone.png",
 }
-local DEBRIS_TYPES = { "brick", "plank", "stone" }
+local STONE_TYPES = { "brick", "stone" } -- камни и кирпичи: появляются только внизу
+local PLANK_TYPES = { "plank" }          -- доски: по всей площади двери
 
 -- Прямоугольник шкалы/дорожки внизу панели (для bar и saw).
 local function TrackRect(w, h)
@@ -111,7 +112,7 @@ end
 -- Выбирает мини-игру по инструменту и готовит её состояние.
 function PANEL:SetTool(toolId)
     self.toolId = toolId
-    self.kind = DoorSystem.GetMinigameKind(toolId)
+    self.kind = DoorSystem.GetMinigameKind(toolId, self.door)
     self.params = DoorSystem.GetKindParams(toolId, self.door)
     DoorSystem.ActiveMinigame = self
 
@@ -270,7 +271,24 @@ function PANEL:ThinkSaw()
     end
 end
 
--- Лопата: обломки появляются на двери, лежат ограниченное время.
+-- Границы центров обломков для группы: "plank" — вся зона двери, "stone" — низ завала.
+function PANEL:DebrisBounds(group)
+    local zone = DoorSystem.Config.MinigameMenu.hitZone
+    local w, h = self:GetWide(), self:GetTall()
+    local half = self.params.itemSize / 2
+
+    local x1, x2 = zone.x1 * w + half * 0.6, zone.x2 * w - half * 0.6
+    local y1, y2 = zone.y1 * h + half * 0.6, zone.y2 * h - half * 0.6
+
+    if group == "stone" then
+        local sz = self.params.stoneZone or { y1 = 0.66, y2 = 0.86 }
+        y1, y2 = sz.y1 * h, sz.y2 * h
+    end
+
+    return x1, x2, y1, y2
+end
+
+-- Обломки (завал): появляются на двери, лежат ограниченное время.
 function PANEL:ThinkDebris()
     local d, p = self.debris, self.params
     local cfg = DoorSystem.Config.MinigameMenu
@@ -293,9 +311,11 @@ function PANEL:ThinkDebris()
     if now >= d.nextSpawn and count < p.maxItems then
         d.nextSpawn = now + p.spawnEvery
 
-        local half = p.itemSize / 2
-        local x1, x2 = zone.x1 * w + half * 0.6, zone.x2 * w - half * 0.6
-        local y1, y2 = zone.y1 * h + half * 0.6, zone.y2 * h - half * 0.6
+        -- Доска — по всей площади двери, камень/кирпич — только внизу завала.
+        local isPlank = math.Rand(0, 1) < (p.plankChance or 0.4)
+        local group = isPlank and "plank" or "stone"
+        local types = isPlank and PLANK_TYPES or STONE_TYPES
+        local x1, x2, y1, y2 = self:DebrisBounds(group)
 
         -- Несколько попыток найти место, не слишком накрывающее другие обломки.
         local x, y
@@ -309,7 +329,8 @@ function PANEL:ThinkDebris()
         end
 
         table.insert(d.items, {
-            id = DEBRIS_TYPES[math.random(#DEBRIS_TYPES)],
+            id = types[math.random(#types)],
+            group = group,
             x = x, y = y,
             rot = math.Rand(-35, 35),
             born = now,
@@ -397,7 +418,7 @@ function PANEL:OnMousePressed(mcode)
             local it = d.items[i]
             if (mx - it.x) ^ 2 + (my - it.y) ^ 2 <= (half * 0.85) ^ 2 then
                 table.remove(d.items, i)
-                d.held = { id = it.id, rot = it.rot, x = it.x, y = it.y, dx = it.x - mx, dy = it.y - my }
+                d.held = { id = it.id, group = it.group, rot = it.rot, x = it.x, y = it.y, dx = it.x - mx, dy = it.y - my }
                 self:MouseCapture(true)
                 surface.PlaySound(self.params.takeSound)
                 break
@@ -447,11 +468,13 @@ function PANEL:OnMouseReleased(mcode)
             SendHit()
         else
             -- Отпущен над дверью — обломок остаётся лежать здесь.
-            local half = self.params.itemSize / 2
+            -- Камни возвращаются только в нижнюю зону, доски — в любое место двери.
+            local x1, x2, y1, y2 = self:DebrisBounds(h.group)
             table.insert(d.items, {
                 id = h.id,
-                x = math.Clamp(h.x, z.x1 * w + half * 0.6, z.x2 * w - half * 0.6),
-                y = math.Clamp(h.y, z.y1 * ph + half * 0.6, z.y2 * ph - half * 0.6),
+                group = h.group,
+                x = math.Clamp(h.x, x1, x2),
+                y = math.Clamp(h.y, y1, y2),
                 rot = h.rot,
                 born = CurTime(),
                 expires = CurTime() + self.params.lifetime,

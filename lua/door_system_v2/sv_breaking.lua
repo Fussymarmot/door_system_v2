@@ -71,8 +71,16 @@ local function FinishBreaking(ply, door, mode)
     local modeCfg = DoorSystem.Config.Modes and DoorSystem.Config.Modes[mode]
     local result = modeCfg and modeCfg.result or "break"
 
+    -- У некоторых дверей (завал) свой результат: дверь просто исчезает.
+    local bySkin = DoorSystem.Config.DoorResultBySkin
+    if bySkin and IsValid(door) and bySkin[door:GetSkin() or 0] then
+        result = bySkin[door:GetSkin() or 0]
+    end
+
     if result == "open" then
         DoorSystem.OpenDoor(door)
+    elseif result == "remove" then
+        DoorSystem.RemoveDoor(door)
     else
         DoorSystem.BreakDoor(door)
     end
@@ -99,7 +107,7 @@ function DoorSystem.StartBreaking(ply, door, tool, mode)
     ply.DoorSystem_BarLast = CurTime()
     ply.DoorSystem_BarSound = 0
 
-    local kind = DoorSystem.GetMinigameKind(tool.id)
+    local kind = DoorSystem.GetMinigameKind(tool.id, door)
     ply.DoorSystem_Kind = (mode == "hands") and kind or nil
 
     -- Игры-эффекты (взрыв, молотов): без участия игрока, дверь открывается
@@ -205,6 +213,36 @@ function DoorSystem.OpenDoor(door)
     door:Fire("Open", "", 0.1)
 
     BroadcastDoorState(door, true)
+end
+
+-- Убирает именно эту дверь (завал после раскопок): без открывания и без
+-- физического обломка. Соседние двери не затрагиваются.
+function DoorSystem.RemoveDoor(door)
+    if not IsValid(door) then return end
+    if door.DoorSystem_Broken then return end
+
+    door.DoorSystem_Broken = true
+    door.DoorSystem_Locked = false -- снимает блокировку из sv_lock.lua
+    door.DoorSystem_ClosedAngle = nil
+    door.DoorSystem_ClosedPos = nil
+
+    door:SetSolid(SOLID_NONE)
+    door:SetNotSolid(true)
+    door:SetNoDraw(true)
+    door:SetCollisionGroup(COLLISION_GROUP_WORLD)
+
+    BroadcastDoorState(door, false)
+
+    -- Модельные двери удаляем совсем; брашевые (func_*) только прячем,
+    -- чтобы не ломать логику карты.
+    local class = door:GetClass()
+    if class == "prop_door_rotating" or class == "prop_dynamic" then
+        timer.Simple(0.1, function()
+            if IsValid(door) then
+                door:Remove()
+            end
+        end)
+    end
 end
 
 -- Прячет оригинальную дверь и создаёт её физический сломанный аналог.

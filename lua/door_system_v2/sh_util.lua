@@ -79,8 +79,23 @@ function DoorSystem.GetDoorTools(door)
     for _, entry in ipairs(DoorSystem.GetDoorToolList(door)) do
         local tool = DoorSystem.GetTool(entry.id)
         if tool then
-            table.insert(result, { tool = tool, time = entry.time })
+            table.insert(result, { tool = tool, time = entry.time, energy = entry.energy })
         end
+    end
+
+    -- Условная энергия: чем дольше инструмент ломает эту дверь, тем она больше.
+    local levels = DoorSystem.Config.EnergyLevels or { 30, 15, 5 }
+    local order = {}
+    for i = 1, #result do order[i] = i end
+
+    table.sort(order, function(a, b)
+        local ta, tb = result[a].time or 0, result[b].time or 0
+        if ta ~= tb then return ta > tb end
+        return a < b
+    end)
+
+    for rank, idx in ipairs(order) do
+        result[idx].energy = result[idx].energy or levels[math.min(rank, #levels)]
     end
 
     return result
@@ -105,9 +120,32 @@ function DoorSystem.GetToolTime(tool, door)
 end
 
 
--- Возвращает тип мини-игры для инструмента (clicker, crosses, bar, saw, boom, molotov).
-function DoorSystem.GetMinigameKind(toolId)
+-- Возвращает настройки двери, у которой мини-игра не зависит от инструмента (или nil).
+function DoorSystem.GetDoorMinigameOverride(door)
+    local over = DoorSystem.Config.DoorMinigameOverride
+    if not over or not IsValid(door) then return nil end
+
+    return over[door:GetSkin() or 0]
+end
+
+-- Возвращает тип мини-игры для инструмента на этой двери
+-- (clicker, crosses, bar, saw, debris, boom, molotov).
+function DoorSystem.GetMinigameKind(toolId, door)
+    local over = DoorSystem.GetDoorMinigameOverride(door)
+    if over and over.kind then return over.kind end
+
     return DoorSystem.Config.MinigameKinds[toolId] or "crosses"
+end
+
+-- Энергия инструмента на этой двери (30 / 15 / 5): столько действий нужно в мини-игре.
+function DoorSystem.GetToolEnergy(toolId, door)
+    for _, entry in ipairs(DoorSystem.GetDoorTools(door)) do
+        if entry.tool.id == toolId then
+            return entry.energy
+        end
+    end
+
+    return (DoorSystem.Config.EnergyLevels or { 30 })[1]
 end
 
 -- Уровень сложности двери (1..5): по скину, иначе по типу двери.
@@ -126,7 +164,7 @@ end
 -- Массивы из Config.Difficulty разворачиваются в значение нужного уровня.
 function DoorSystem.GetKindParams(toolId, door)
     local cfg = DoorSystem.Config
-    local kind = DoorSystem.GetMinigameKind(toolId)
+    local kind = DoorSystem.GetMinigameKind(toolId, door)
     local level = DoorSystem.GetDoorDifficulty(door)
 
     local params = { kind = kind, level = level }
@@ -137,6 +175,28 @@ function DoorSystem.GetKindParams(toolId, door)
         else
             params[key] = value
         end
+    end
+
+    -- Количество действий = энергия инструмента (× множитель, у кулака 2).
+    -- Шкале лома энергия задаёт время удержания.
+    local energy = DoorSystem.GetToolEnergy(toolId, door)
+    -- Множитель действует только на настоящие удары кулаком (кликер по двери);
+    -- перетаскивания, проходы и крестики считаются 1 к 1.
+    local mult = 1
+    if kind == "clicker" and cfg.EnergyHitMultiplier then
+        mult = cfg.EnergyHitMultiplier[toolId] or 1
+    end
+
+    if kind == "bar" then
+        params.fillTime = energy * (params.secondsPerEnergy or 0.4)
+    elseif kind == "clicker" or kind == "crosses" or kind == "saw" or kind == "debris" then
+        params.hitsRequired = math.floor(energy * mult + 0.5)
+    end
+
+    -- Если у двери явно задано число обломков — оно важнее энергии.
+    local over = DoorSystem.GetDoorMinigameOverride(door)
+    if over and over.hitsRequired then
+        params.hitsRequired = over.hitsRequired[toolId] or over.hitsDefault or params.hitsRequired
     end
 
     params.hitsRequired = params.hitsRequired or (cfg.HandsMode and cfg.HandsMode.hitsRequired) or 8
@@ -152,7 +212,7 @@ end
 
 -- Подпись под инструментом в меню в режиме «руками».
 function DoorSystem.GetHandsLabel(toolId, door)
-    local kind = DoorSystem.GetMinigameKind(toolId)
+    local kind = DoorSystem.GetMinigameKind(toolId, door)
 
     if kind == "bar" then return "шкала" end
     if kind == "boom" or kind == "molotov" then return "взрыв" end

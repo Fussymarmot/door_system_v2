@@ -11,6 +11,14 @@
 
 local PANEL = {}
 
+-- Крупный жирный шрифт для числа энергии под иконками инструментов.
+surface.CreateFont("DoorSystem_Energy", {
+    font = "Arial",
+    size = 28,
+    weight = 1000,
+    antialias = true,
+})
+
 -- Рисует закрывающий крестик.
 local function PaintCloseButton(s, w, h)
     local hover = s:IsHovered()
@@ -44,7 +52,9 @@ function PANEL:Init()
     end)
 
     self.tools = {}
-    self.mode = nil -- "timer" | "hands"; пока не выбран — инструменты неактивны
+    -- Способ уже выбран (по умолчанию или как в прошлый раз), поэтому
+    -- клик по иконке инструмента сразу запускает взлом.
+    self.mode = DoorSystem.LastMode or cfg.DefaultMode or "hands"
     self.noModeFlash = 0
     self.bgMaterial = Material(cfg.MenuBackground or "", "noclamp smooth")
 
@@ -122,6 +132,7 @@ function PANEL:BuildToolButtons()
     local size = 132
     local matBg = Material("door_system_v2/lock_method_bg.png", "noclamp smooth")
     local matTime = Material("door_system_v2/timer.png", "noclamp smooth")
+    local matEnergy = Material(DoorSystem.Config.EnergyIcon or "door_system_v2/energy.png", "noclamp smooth")
 
     for i, entry in ipairs(DoorSystem.GetDoorTools(self.door)) do
         local toolCfg = entry.tool
@@ -158,9 +169,26 @@ function PANEL:BuildToolButtons()
             local rowY = h * 0.74
 
             if self.mode == "hands" then
-                -- Время тут не важно: подпись зависит от мини-игры инструмента.
-                draw.SimpleText(DoorSystem.GetHandsLabel(toolCfg.id, self.door), "DermaDefaultBold", w / 2, rowY + 8,
-                    textCol, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                -- Время тут не важно: показываем условные единицы энергии.
+                local eIconSize = 32
+                local energyTxt = tostring(entry.energy or 0)
+
+                surface.SetFont("DoorSystem_Energy")
+                local eW = select(1, surface.GetTextSize(energyTxt))
+
+                local eTotal = eIconSize + 6 + eW
+                local eX = w / 2 - eTotal / 2
+                local eY = rowY - 8
+
+                surface.SetDrawColor(255, 255, 255, alpha)
+                surface.SetMaterial(matEnergy)
+                surface.DrawTexturedRect(eX, eY, eIconSize, eIconSize)
+
+                -- Тень под числом, чтобы читалось на любом фоне.
+                draw.SimpleText(energyTxt, "DoorSystem_Energy", eX + eIconSize + 7, eY + eIconSize / 2 + 1,
+                    Color(0, 0, 0, alpha), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                draw.SimpleText(energyTxt, "DoorSystem_Energy", eX + eIconSize + 6, eY + eIconSize / 2,
+                    textCol, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
             else
                 local tIconSize = 16
                 local timeTxt = DoorSystem.FormatTime(entry.time)
@@ -180,7 +208,7 @@ function PANEL:BuildToolButtons()
             end
 
             if not available then
-                draw.SimpleText("нет инструмента", "DermaDefault", w / 2, h * 0.93,
+                draw.SimpleText("нет инструмента", "DermaDefault", w / 2, h * 0.96,
                     Color(200, 90, 90), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
         end
@@ -257,6 +285,7 @@ function PANEL:BuildModeButtons()
         btn.DoClick = function()
             surface.PlaySound("ui/buttonclick.wav")
             self.mode = m.id
+            DoorSystem.LastMode = m.id -- запоминаем выбор на следующие открытия меню
         end
 
         table.insert(self.modeButtons, btn)

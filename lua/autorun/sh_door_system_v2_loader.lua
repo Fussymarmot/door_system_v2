@@ -62,6 +62,7 @@ if SERVER then
     resource.AddSingleFile("materials/door_system_v2/fist.png")
     resource.AddSingleFile("materials/door_system_v2/lock_method_bg.png")
     resource.AddSingleFile("materials/door_system_v2/timer.png")
+    resource.AddSingleFile("materials/door_system_v2/energy.png")
     resource.AddSingleFile("materials/door_system_v2/menu_bg.png")
     resource.AddSingleFile("materials/door_system_v2/dynamite.png")
     resource.AddSingleFile("materials/door_system_v2/hacksaw.png")
