@@ -25,7 +25,7 @@ DEFAULTS = {
     "gmpublish_bin": "/home/fussy/.local/share/Steam/steamapps/common/GarrysMod/bin/gmpublish_linux",
     "addon_folder":  "/home/fussy/.local/share/Steam/steamapps/common/GarrysMod/garrysmod/addons/door_system_v2",
     "gma_out":       "/home/fussy/.local/share/Steam/steamapps/common/GarrysMod/garrysmod/addons/door_system_v2.gma",
-    "workshop_id":   "3755230335",
+    "workshop_id":   "3832551891",
 }
 
 
