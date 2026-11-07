@@ -36,7 +36,7 @@ net.Receive("DoorSystem_EasterEgg", function(_, ply)
     door.Touch = function(self, ent)
         if ent == ply and IsValid(ply) and ply:Alive() then
             ply:TakeDamage(1000, self, self)
-            ply:ChatPrint("Дверь. Ты. Всё.")
+            DoorSystem.SendMessage(ply, "msg.easter_egg")
         end
     end
 

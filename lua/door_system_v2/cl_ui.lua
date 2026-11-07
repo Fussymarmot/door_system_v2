@@ -208,7 +208,7 @@ function PANEL:BuildToolButtons()
             end
 
             if not available then
-                draw.SimpleText("нет инструмента", "DermaDefault", w / 2, h * 0.96,
+                draw.SimpleText(DoorSystem.L("ui.no_tool"), "DermaDefault", w / 2, h * 0.96,
                     Color(200, 90, 90), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
             end
         end

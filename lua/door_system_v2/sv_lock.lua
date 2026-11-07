@@ -15,7 +15,7 @@ hook.Add("PlayerUse", "DoorSystem_BlockLockedDoors", function(ply, ent)
     local key = ply:EntIndex() .. ":" .. ent:EntIndex()
 
     if not lockedDoorMessageCooldown[key] or now - lockedDoorMessageCooldown[key] >= 0.25 then
-        ply:ChatPrint("Дверь заблокирована. Её можно только выломать.")
+        DoorSystem.SendMessage(ply, "msg.door_locked")
         lockedDoorMessageCooldown[key] = now
     end
 

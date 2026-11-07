@@ -150,7 +150,7 @@ local function RerollAllDoors(reason)
         ApplyRandomSkin(ent, doors)
     end
 
-    print("[Door System] " .. reason .. ", двери пересчитаны: " .. #doors)
+    print(DoorSystem.L("prefix") .. DoorSystem.L("log.rerolled", reason, #doors))
 end
 
 local applyingSettings = false
@@ -161,12 +161,12 @@ local function RerollFromSettings(reason)
 end
 
 cvars.AddChangeCallback("door_system_skin_chance", function(_, oldValue, newValue)
-    RerollFromSettings("Шанс кастомной двери изменён (" .. oldValue .. " -> " .. newValue .. ")")
+    RerollFromSettings(DoorSystem.L("log.chance_changed", oldValue, newValue))
 end, "DoorSystem_RerollOnChanceChange")
 
 for _, skinId in ipairs(DoorSystem.Config.RandomSkin.pool or {}) do
     cvars.AddChangeCallback("door_system_skin_weight_" .. skinId, function(_, oldValue, newValue)
-        RerollFromSettings("Вес скина " .. skinId .. " изменён (" .. oldValue .. " -> " .. newValue .. ")")
+        RerollFromSettings(DoorSystem.L("log.weight_changed", skinId, oldValue, newValue))
     end, "DoorSystem_RerollOnWeightChange_" .. skinId)
 end
 
@@ -186,5 +186,5 @@ net.Receive("DoorSystem_UpdateSkinSettings", function(_, ply)
     end
 
     applyingSettings = false
-    RerollAllDoors("Настройки кастомных дверей изменены администратором")
+    RerollAllDoors(DoorSystem.L("log.admin_changed"))
 end)

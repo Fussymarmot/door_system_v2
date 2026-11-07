@@ -540,7 +540,7 @@ function PANEL:PaintBar(w, h)
     surface.SetMaterial(self.sepMat)
     surface.DrawTexturedRect(sx - sw / 2, by + bh / 2 - sh / 2, sw, sh)
 
-    draw.SimpleText(b.inZone and "Держи!" or "ПРОБЕЛ — вправо, отпусти — влево", "DermaDefaultBold",
+    draw.SimpleText(b.inZone and DoorSystem.L("mg.hold") or DoorSystem.L("mg.bar_hint"), "DermaDefaultBold",
         w / 2, by - 12, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
 end
 
@@ -571,7 +571,7 @@ function PANEL:PaintSaw(w, h)
     surface.SetMaterial(self.sawMat)
     surface.DrawTexturedRect(hx - size / 2, by + bh / 2 - size / 2, size, size)
 
-    draw.SimpleText(s.dragging and "Води вправо-влево" or "Зажми ползунок и води вправо-влево", "DermaDefaultBold",
+    draw.SimpleText(s.dragging and DoorSystem.L("mg.saw_active") or DoorSystem.L("mg.saw_idle"), "DermaDefaultBold",
         w / 2, by - 14, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
 end
 
@@ -588,7 +588,7 @@ function PANEL:PaintDebris(w, h)
         local a = 40 + pulse * 45
         draw.RoundedBox(0, 0, 0, z.x1 * w, h, Color(110, 220, 90, a))
         draw.RoundedBox(0, z.x2 * w, 0, w - z.x2 * w, h, Color(110, 220, 90, a))
-        draw.SimpleText("Выбрось в сторону!", "DermaDefaultBold", w / 2, 14,
+        draw.SimpleText(DoorSystem.L("mg.throw"), "DermaDefaultBold", w / 2, 14,
             color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
     end
 
@@ -701,7 +701,7 @@ function PANEL:Paint(w, h)
 
         -- Эффекты идут сами — полоска и сложность им не нужны.
         if kind ~= "boom" and kind ~= "molotov" then
-            draw.SimpleText("Сложность: " .. (self.params.level or 1) .. "/5", "DermaDefaultBold",
+            draw.SimpleText(DoorSystem.L("mg.difficulty", self.params.level or 1), "DermaDefaultBold",
                 14, 12, Color(255, 220, 90), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 
             -- Полоска прогресса внизу. Для шкалы рисуем локальное значение, остальным — серверное.

@@ -329,6 +329,11 @@ DoorSystem.Config = {
             icon = "door_system_v2/crowbar.png",
             requiredWeapons = {
                 ["weapon_crowbar"] = true,
+                ["tfa_dayr_iron_crowbar"] = true,
+                ["tfa_dayr_normal_crowbar"] = true,
+                ["tfa_dayr_rusted_crowbar"] = true,
+                ["tfa_dayr_steel_crowbar"] = true,
+
             },
             hitSound = "door_system_v2/crowbar_loop.mp3",
             hitInterval = 0.5,

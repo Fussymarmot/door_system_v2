@@ -214,11 +214,11 @@ end
 function DoorSystem.GetHandsLabel(toolId, door)
     local kind = DoorSystem.GetMinigameKind(toolId, door)
 
-    if kind == "bar" then return "шкала" end
-    if kind == "boom" or kind == "molotov" then return "взрыв" end
-    if kind == "saw" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " движений" end
-    if kind == "debris" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " обломков" end
-    if kind == "clicker" then return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " кликов" end
+    if kind == "bar" then return DoorSystem.L("label.bar") end
+    if kind == "boom" or kind == "molotov" then return DoorSystem.L("label.boom") end
+    if kind == "saw" then return DoorSystem.L("label.moves", DoorSystem.GetHandsCfg(toolId, door).hitsRequired) end
+    if kind == "debris" then return DoorSystem.L("label.debris", DoorSystem.GetHandsCfg(toolId, door).hitsRequired) end
+    if kind == "clicker" then return DoorSystem.L("label.clicks", DoorSystem.GetHandsCfg(toolId, door).hitsRequired) end
 
-    return DoorSystem.GetHandsCfg(toolId, door).hitsRequired .. " ударов"
+    return DoorSystem.L("label.hits", DoorSystem.GetHandsCfg(toolId, door).hitsRequired)
 end

@@ -39,9 +39,9 @@ end)
 hook.Add("InitPostEntity", "DoorSystem_StartupHint", function()
     timer.Simple(3, function()
         chat.AddText(
-            Color(255, 210, 90), "[Door System] ",
+            Color(255, 210, 90), DoorSystem.L("prefix"),
             color_white,
-            "Чтобы использовать топор или лом — держи их в руках перед взломом. Клавишу можно поменять в Q-меню -> Utilities -> Door System."
+            DoorSystem.L("msg.startup_hint")
         )
     end)
 end)
@@ -95,7 +95,7 @@ net.Receive("DoorSystem_StartResult", function()
     if not success then
         DoorSystem.PendingDoor = nil
         DoorSystem.PendingTool = nil
-        chat.AddText(Color(220, 90, 90), "[Door System] ", color_white, "Не удалось начать взлом.")
+        chat.AddText(Color(220, 90, 90), DoorSystem.L("prefix"), color_white, DoorSystem.L("msg.start_failed"))
         return
     end
 
@@ -151,7 +151,7 @@ hook.Add("HUDPaint", "DoorSystem_ProgressBar", function()
 
     local tool = DoorSystem.GetTool(DoorSystem.BreakToolId)
     draw.SimpleText(
-        tool and tool.name or "Взлом двери",
+        DoorSystem.GetToolName(tool),
         "DermaDefaultBold",
         w / 2,
         y - 16,

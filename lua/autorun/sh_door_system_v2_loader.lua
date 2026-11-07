@@ -15,11 +15,12 @@ end
 
 -- Общие файлы нужны как на сервере, так и на клиенте.
 IncludeShared("door_system_v2/sh_config.lua")
+IncludeShared("door_system_v2/sh_lang.lua")
 IncludeShared("door_system_v2/sh_util.lua")
 
 if SERVER then
     CreateConVar("door_system_skin_chance", "0.20", FCVAR_ARCHIVE + FCVAR_REPLICATED,
-        "Шанс появления кастомной двери (0.0 - 1.0)")
+        DoorSystem.L("cvar.skin_chance"))
 
     -- Вес каждого кастомного скина. Значения используются как доли
     -- внутри уже выпавшей кастомной двери и нормализуются автоматически.
@@ -28,7 +29,7 @@ if SERVER then
             "door_system_skin_weight_" .. skinId,
             tostring((DoorSystem.Config.RandomSkin.weights or {})[skinId] or 0),
             FCVAR_ARCHIVE + FCVAR_REPLICATED,
-            "Вес кастомного скина двери " .. skinId .. " (0 - 100)"
+            DoorSystem.L("cvar.skin_weight", tostring(skinId))
         )
     end
 
@@ -50,6 +51,7 @@ if SERVER then
     util.AddNetworkString("DoorSystem_MinigameProgress")
     util.AddNetworkString("DoorSystem_StartResult")
     util.AddNetworkString("DoorSystem_UpdateSkinSettings")
+    util.AddNetworkString("DoorSystem_Msg")
 
     include("door_system_v2/sv_breaking.lua")
     include("door_system_v2/sv_model_swap.lua")

@@ -2,7 +2,7 @@
     DOOR SYSTEM V2 — настройка клавиши через Q-меню
 ]]
 
-CreateClientConVar("door_system_key", tostring(KEY_G), true, false, "Клавиша для взлома дверей (Door System)")
+CreateClientConVar("door_system_key", tostring(KEY_G), true, false, DoorSystem.L("cvar.key"))
 
 local wasDown = false
 
@@ -69,10 +69,38 @@ end
 
 -- Добавляет настройки в панель Utilities.
 hook.Add("PopulateToolMenu", "DoorSystem_SettingsTab", function()
-    spawnmenu.AddToolMenuOption("Utilities", "Door System", "DoorSystemSettings", "Настройки", "", "", function(panel)
+    local function Build(panel)
         panel:ClearControls()
 
-        panel:Help("Клавиша для взлома дверей (Day R style):")
+        -- Выбор языка / language selector
+        panel:Help(DoorSystem.L("settings.language"))
+
+        local langBox = vgui.Create("DComboBox", panel)
+        langBox:SetSize(200, 24)
+
+        local langCvar = GetConVar("door_system_language")
+        local current = langCvar and langCvar:GetString() or "auto"
+        local options = {
+            { "auto", DoorSystem.L("settings.lang_auto") },
+            { "ru",   DoorSystem.L("settings.lang_ru") },
+            { "en",   DoorSystem.L("settings.lang_en") },
+        }
+
+        for _, opt in ipairs(options) do
+            langBox:AddChoice(opt[2], opt[1], opt[1] == current)
+        end
+
+        langBox.OnSelect = function(_, _, _, code)
+            RunConsoleCommand("door_system_language", code)
+            -- Перестраиваем панель уже на новом языке.
+            timer.Simple(0, function()
+                if IsValid(panel) then Build(panel) end
+            end)
+        end
+
+        panel:AddItem(langBox)
+
+        panel:Help(DoorSystem.L("settings.key_title"))
 
         local binder = vgui.Create("DBinder", panel)
         binder:SetSize(200, 24)
@@ -83,7 +111,7 @@ hook.Add("PopulateToolMenu", "DoorSystem_SettingsTab", function()
         end
 
         panel:AddItem(binder)
-        panel:Help("Нажми на поле выше, затем нужную клавишу — она сразу назначится.")
+        panel:Help(DoorSystem.L("settings.key_hint"))
 
         local rs = DoorSystem.Config.RandomSkin
         local values = {
@@ -101,43 +129,43 @@ hook.Add("PopulateToolMenu", "DoorSystem_SettingsTab", function()
             )
         end
 
-        panel:Help("Вероятность появления кастомной двери")
+        panel:Help(DoorSystem.L("settings.chance_title"))
 
         AddPercentSlider(
             panel,
-            "Кастомная дверь",
+            DoorSystem.L("settings.chance_label"),
             values.chance,
             function(_, val)
                 values.chance = val
                 SendSkinSettings(values)
             end,
-            "Шанс первого броска: станет ли дверь кастомной вообще."
+            DoorSystem.L("settings.chance_tip")
         )
 
-        panel:Help("Если кастомная дверь выпала, выбирается один из скинов ниже по весам.")
+        panel:Help(DoorSystem.L("settings.weights_title"))
 
         for _, skinId in ipairs(rs.pool or {}) do
-            local name = (rs.names and rs.names[skinId]) or ("Скин " .. skinId)
-
             AddPercentSlider(
                 panel,
-                name,
+                DoorSystem.GetSkinName(skinId),
                 values.weights[skinId],
                 function(_, val)
                     values.weights[skinId] = val
                     SendSkinSettings(values)
                 end,
-                "Вес этого типа среди выпавших кастомных дверей. Веса нормализуются автоматически."
+                DoorSystem.L("settings.weight_tip")
             )
         end
 
-        panel:Help("Пример: кастомные двери 20%, железная 70%, деревянная 30%.")
-        panel:ControlHelp("Тогда железная будет выпадать с вероятностью 14% от всех дверей.")
-        panel:ControlHelp("Сумма весов может быть любой — 70 + 30, например, автоматически станет 70% / 30%.")
+        panel:Help(DoorSystem.L("settings.example_1"))
+        panel:ControlHelp(DoorSystem.L("settings.example_2"))
+        panel:ControlHelp(DoorSystem.L("settings.example_3"))
 
-        local refresh = panel:Button("Применить настройки сейчас")
+        local refresh = panel:Button(DoorSystem.L("settings.apply"))
         refresh.DoClick = function()
             SendSkinSettings(values)
         end
-    end)
+    end
+
+    spawnmenu.AddToolMenuOption("Utilities", "Door System", "DoorSystemSettings", DoorSystem.L("settings.tab"), "", "", Build)
 end)
